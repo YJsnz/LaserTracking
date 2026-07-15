@@ -1,0 +1,25 @@
+# build outputs
+src/build/
+src/build_*/
+**/build/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/Makefile
+
+# logs
+src/log/
+*.log
+
+# cache
+*.cache
+__pycache__/
+
+# camera/runtime artifacts
+MvSdkLog/
+
+# large datasets
+yolo/datasets/
+
+# optional model artifacts
+*.engine

@@ -1,0 +1,5 @@
+*.engine
+*.onnx
+*.pt
+*.bin
+*.cache
