@@ -1,13 +1,8 @@
 # LaserTracking
 
-华北理工大学 HORIZON 战队雷达组的视觉激光追踪项目，面向 RoboMaster 2026 反无人机激光追踪系统。项目将工业相机、目标检测、云台控制和串口通信拆分为可独立维护的 C++ 模块。
+YSU 使用的视觉激光追踪项目，面向 RoboMaster 2026 反无人机激光追踪系统。项目将工业相机、目标检测、云台控制和串口通信拆分为可独立维护的 C++ 模块。
 
-<p align="center">
-  <img src="docs/Horizon.png" width="220" alt="HORIZON 战队">
-</p>
-
-- 项目介绍：[RoboMaster 论坛开源帖](https://bbs.robomaster.com/article/1883301?source=1)
-- 两轴云台电控参考：[Horizon_frame_f1](https://github.com/NCST-Horizon-RM/Horizon_frame_f1)
+- 原始方案介绍：[RoboMaster 论坛开源帖](https://bbs.robomaster.com/article/1883301?source=1)
 
 ## 项目效果
 
@@ -150,13 +145,13 @@ cd src/build_full_auto/control
 
 ## 硬件参考
 
-- 工业相机：Hikrobot MV-CS200-10UMUC，USB 3.0
-- 镜头：MVL-KF3528M-12MP，35 mm
-- 云台：两轴 Pan-Tilt；GM6020 和 STM32F103C8T6 为参考器件
+- 工业相机：Hikrobot MV-CS016
+- 云台电机：4310 电机 × 2
+- 云台：两轴 Pan-Tilt，电控与机械参数按当前 YSU 方案配置
 - 主机：x86_64 Linux；NVIDIA GPU 用于可选 CUDA/TensorRT 加速
-- 接口：相机 USB 3.0，云台 UART
+- 接口：相机接口和云台通信参数按实际设备配置
 
-当前演示使用的相机帧率偏低时可能出现明显跟踪延迟；实测时优先选择满足视场和帧率要求的相机。实际应用请使用 RoboMaster 组委会认可的激光发射器。硬件图片和演示素材见 [`docs/`](docs/) 与相机资料目录。
+相机分辨率、Bayer 格式和帧率应按 MV-CS016 的实际配置核对，并与相机配置及标定参数保持一致。实际应用请使用 RoboMaster 组委会认可的激光发射器。`docs/` 中部分硬件图片和手册是早期方案的参考资料，不代表当前 YSU 硬件配置。
 
 ## 相关模块文档
 

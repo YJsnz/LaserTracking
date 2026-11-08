@@ -2,7 +2,8 @@
 
 - 海康 MVS 工业相机驱动（USB3/GigE）。
 - 提供类库接口与示例程序。
-- 目标相机：[MV-CS200-10UMUC](src/hik_camera/doc/MV-CS200-10UMUC_20241104_9799.pdf)（USB3.0，5472x3648，Bayer GB8）。
+- 当前使用相机：Hikrobot MV-CS016。请根据相机实际输出分辨率、像素格式和帧率调整配置及标定参数。
+- [MV-CS200-10UMUC 手册](doc/MV-CS200-10UMUC_20241104_9799.pdf)是早期参考资料，不代表当前使用的相机型号。
 
 ## 上下游接口
 
@@ -89,7 +90,7 @@ cmake .. -DMVS_ROOT=/opt/MVS -DCMAKE_CUDA_ARCHITECTURES=86
   - `gpu_demosaic_backend=auto`：优先 OpenCV CUDA，其次 NPP
   - `gpu_demosaic_backend=opencv`：只用 OpenCV CUDA
   - `gpu_demosaic_backend=npp`：只用 NPP（不依赖 OpenCV CUDA）
-- `bayer_pattern` 默认建议 `GB`（MV-CS200-10UMUC 常见 Bayer GB）
+- `bayer_pattern` 必须与相机当前输出的 Bayer 像素格式一致；切换相机或 `pixel_format` 后请重新核对。
 
 ## 高性能推理支持
 
