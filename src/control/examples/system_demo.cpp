@@ -268,6 +268,11 @@ int main(int argc, char** argv) {
         std::cerr << "Failed to load control config\n";
         return 1;
     }
+    std::cout << "control mode=" << ctrl_cfg.tracking_mode
+              << " servo_gain=" << ctrl_cfg.visual_servo_gain
+              << " max_rate=" << ctrl_cfg.max_angle_rate
+              << " lead=" << ctrl_cfg.max_command_lead_deg
+              << " velocity_ff=" << (ctrl_cfg.use_velocity_ff ? 1 : 0) << "\n";
     control::Controller controller(ctrl_cfg);
 
     hik_camera::HikCamera camera;

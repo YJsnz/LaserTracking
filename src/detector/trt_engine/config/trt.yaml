@@ -7,7 +7,7 @@ preprocess: "letterbox"                  # letterbox | resize
 output_mode: "auto"                      # auto | packed_nms | raw_with_nms | raw_only
 num_classes: 1                           # class count
 target_label: "drone"                    # label attached to detections
-conf: 0.25                              # tracking test: reject low-confidence false positives
+conf: 0.60                              # bring-up: reject low-confidence false positives
 iou: 0.45                                # NMS IoU
 max_det: 100                             # max detections
 top_k: 1                                 # keep top-k only

@@ -2,8 +2,11 @@
 #include "control/config.h"
 #include "control/controller.h"
 
+#include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <thread>
 
 int main(int argc, char** argv) {
     std::string control_config = "../config/control.yaml";
@@ -11,6 +14,8 @@ int main(int argc, char** argv) {
     float test_v = 100.0f;
     float state_pitch = 0.0f;
     float state_yaw = 0.0f;
+    int steps = 1;
+    int step_ms = 10;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -24,6 +29,10 @@ int main(int argc, char** argv) {
             state_pitch = std::stof(argv[++i]);
         } else if (arg == "--yaw" && i + 1 < argc) {
             state_yaw = std::stof(argv[++i]);
+        } else if (arg == "--steps" && i + 1 < argc) {
+            steps = std::max(1, std::stoi(argv[++i]));
+        } else if (arg == "--step-ms" && i + 1 < argc) {
+            step_ms = std::max(1, std::stoi(argv[++i]));
         }
     }
 
@@ -47,7 +56,14 @@ int main(int argc, char** argv) {
     state.yaw = state_yaw;
     state.timestamp = static_cast<uint32_t>(meas.timestamp);
 
-    common::GimbalCommand cmd = controller.update(meas, cam_model, boresight, state);
+    common::GimbalCommand cmd;
+    for (int i = 0; i < steps; ++i) {
+        meas.timestamp = common::nowMs();
+        cmd = controller.update(meas, cam_model, boresight, state);
+        if (i + 1 < steps) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(step_ms));
+        }
+    }
     std::cout << "CMD pitch=" << cmd.pitch << " yaw=" << cmd.yaw
               << " ts=" << cmd.timestamp << "\n";
     return 0;

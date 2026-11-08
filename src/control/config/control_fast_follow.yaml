@@ -5,42 +5,43 @@
 yaw_sign: 1.0
 pitch_sign: -1.0
 
-# Stronger centering response: target enters view -> command the gimbal toward center quickly.
-kp: 1.6
-deadband_px: 1.0
-max_angle_rate: 360.0
-lowpass_alpha: 0.90
-ctrl_dt_nominal_ms: 5.0
+# Incremental image servo does not depend on high-rate gimbal feedback.
+tracking_mode: "incremental"
+kp: 2.1             # absolute-mode fallback only
+visual_servo_gain: 15.0  # angular-rate gain (1/s)
+max_command_lead_deg: 45.0
+deadband_px: 8.0
+max_angle_rate: 240.0
+lowpass_alpha: 0.50      # incremental-mode angular-rate smoothing
+ctrl_dt_nominal_ms: 10.0
 ctrl_dt_min_ms: 1.0
 ctrl_dt_max_ms: 50.0
 
-# Feed-forward is sent to the electrical controller. It only helps if the
-# electrical side actually consumes pitch_rate/yaw_rate.
-use_velocity_ff: 1
-ff_alpha: 0.45
-ff_rate_max: 180.0
+# Re-enable feed-forward only after position tracking and detection are stable.
+use_velocity_ff: 0
+ff_alpha: 0.25
+ff_rate_max: 60.0
 ff_dt_max_ms: 80.0
 
-# Use gimbal-rate damping when the electrical controller returns reliable rate.
-# If the gimbal starts lagging or oscillating, try use_damping: 0 first.
-use_damping: 1
+# Keep visual-side damping off during first bring-up; tune electrical PID first.
+use_damping: 0
 damping_source: "gimbal"
-damping_kd: 0.015
+damping_kd: 0.01
 damping_dt_max_ms: 120
 
-# Faster reacquisition/search once the target is lost.
+# Keep the gimbal still when detection is lost during tracking tests.
 scan_enable: 1
 scan_radius_deg: 10.0
 scan_rate_hz: 0.35
-scan_pattern: "spiral"
+scan_pattern: "circle"
 scan_spacing_deg: 4.0
-scan_speed_deg_s: 45.0
+scan_speed_deg_s: 20.0
 scan_r_max_deg: 12.0
 scan_spiral_return: 1
 scan_k_yaw: 1.4
 scan_k_pitch: 1.0
-scan_enter_delay_ms: 80
-scan_reacq_confirm_frames: 1
+scan_enter_delay_ms: 250
+scan_reacq_confirm_frames: 2
 
 startup_check_frames: 0
 startup_home_pitch: 0.0
@@ -60,5 +61,5 @@ fx: 1836.615169
 fy: 1833.371037
 cx: 689.199425
 cy: 595.072943
-u_L: 640
-v_L: 512
+u_L: 450.0
+v_L: 722.4888888889

@@ -192,6 +192,10 @@ common::GimbalCommand Controller::update(const common::TargetMeasurement& meas,
 
     if (!meas.valid || cam.fx <= 0.0 || cam.fy <= 0.0) {
         in_deadband_ = false;
+        last_track_pitch_rate_ = 0.0;
+        last_track_yaw_rate_ = 0.0;
+        last_ff_pitch_rate_ = 0.0;
+        last_ff_yaw_rate_ = 0.0;
         if (!lost_active_) {
             lost_active_ = true;
             lost_start_ts_ = meas.timestamp;
@@ -205,7 +209,7 @@ common::GimbalCommand Controller::update(const common::TargetMeasurement& meas,
         const double lost_ms = static_cast<double>(meas.timestamp - lost_start_ts_);
         const bool enter_scan = !cfg_.scan_enable ? false
             : (cfg_.scan_enter_delay_ms <= 0.0 || lost_ms >= cfg_.scan_enter_delay_ms);
-            if (enter_scan) {
+        if (enter_scan) {
             if (!scanning_) {
                 double offset = 0.0;
                 if (has_last_meas_) {
@@ -337,6 +341,10 @@ common::GimbalCommand Controller::update(const common::TargetMeasurement& meas,
         }
     }
     if (in_deadband_) {
+        last_track_pitch_rate_ = 0.0;
+        last_track_yaw_rate_ = 0.0;
+        last_ff_pitch_rate_ = 0.0;
+        last_ff_yaw_rate_ = 0.0;
         if (has_last_) {
             cmd.pitch = static_cast<float>(last_pitch_);
             cmd.yaw = static_cast<float>(last_yaw_);
@@ -349,15 +357,52 @@ common::GimbalCommand Controller::update(const common::TargetMeasurement& meas,
         return cmd;
     }
 
-    // Map pixel error to angular error (deg), with configurable sign.
-    double dyaw_rad = cfg_.yaw_sign * std::atan(du / cam.fx);
-    double dpitch_rad = cfg_.pitch_sign * std::atan(dv / cam.fy);
+    // Compute the angle between the target ray and the calibrated laser ray.
+    // atan((u-u_L)/fx) is only a small-angle approximation and is biased when
+    // either point is away from the principal point.
+    const double target_yaw_rad = std::atan((meas.uv.x - cam.cx) / cam.fx);
+    const double laser_yaw_rad = std::atan((bs.u_L - cam.cx) / cam.fx);
+    const double target_pitch_rad = std::atan((meas.uv.y - cam.cy) / cam.fy);
+    const double laser_pitch_rad = std::atan((bs.v_L - cam.cy) / cam.fy);
+    double dyaw_rad = cfg_.yaw_sign * (target_yaw_rad - laser_yaw_rad);
+    double dpitch_rad = cfg_.pitch_sign * (target_pitch_rad - laser_pitch_rad);
     double dyaw = dyaw_rad * kRadToDeg;
     double dpitch = dpitch_rad * kRadToDeg;
 
-    // Position control (absolute angle setpoint).
-    double yaw_cmd = state.yaw + cfg_.kp * dyaw;
-    double pitch_cmd = state.pitch + cfg_.kp * dpitch;
+    const std::string tracking_mode = toLower(cfg_.tracking_mode);
+    const bool incremental_mode = tracking_mode == "incremental";
+    const double rate_base_yaw = has_last_ ? last_yaw_ : state.yaw;
+    const double rate_base_pitch = has_last_ ? last_pitch_ : state.pitch;
+
+    double yaw_cmd = 0.0;
+    double pitch_cmd = 0.0;
+    if (incremental_mode) {
+        const double gain = std::max(0.0, cfg_.visual_servo_gain);
+        const double alpha = clamp(cfg_.lowpass_alpha, 0.0, 1.0);
+        const double yaw_rate_target = clamp(
+            gain * dyaw, -cfg_.max_angle_rate, cfg_.max_angle_rate);
+        const double pitch_rate_target = clamp(
+            gain * dpitch, -cfg_.max_angle_rate, cfg_.max_angle_rate);
+        last_track_yaw_rate_ =
+            alpha * yaw_rate_target + (1.0 - alpha) * last_track_yaw_rate_;
+        last_track_pitch_rate_ =
+            alpha * pitch_rate_target + (1.0 - alpha) * last_track_pitch_rate_;
+
+        yaw_cmd = rate_base_yaw + last_track_yaw_rate_ * dt_s;
+        pitch_cmd = rate_base_pitch + last_track_pitch_rate_ * dt_s;
+
+        const double lead = std::max(0.0, cfg_.max_command_lead_deg);
+        if (lead > 0.0) {
+            yaw_cmd = clamp(yaw_cmd, state.yaw - lead, state.yaw + lead);
+            pitch_cmd = clamp(pitch_cmd, state.pitch - lead, state.pitch + lead);
+        }
+    } else {
+        // Absolute mode requires fresh gimbal feedback.
+        yaw_cmd = state.yaw + cfg_.kp * dyaw;
+        pitch_cmd = state.pitch + cfg_.kp * dpitch;
+        last_track_pitch_rate_ = 0.0;
+        last_track_yaw_rate_ = 0.0;
+    }
 
     if (cfg_.use_damping && cfg_.damping_kd > 0.0) {
         double yaw_rate_fb = 0.0;
@@ -417,16 +462,17 @@ common::GimbalCommand Controller::update(const common::TargetMeasurement& meas,
         last_ff_pitch_rate_ = 0.0;
     }
 
-    // Output smoothing.
-    if (has_last_) {
+    // Absolute mode smooths setpoints; incremental mode smooths angular rate above.
+    if (!incremental_mode && has_last_) {
         yaw_cmd = cfg_.lowpass_alpha * yaw_cmd + (1.0 - cfg_.lowpass_alpha) * last_yaw_;
         pitch_cmd = cfg_.lowpass_alpha * pitch_cmd + (1.0 - cfg_.lowpass_alpha) * last_pitch_;
     }
 
-    // Rate limiting in deg/s.
+    // Rate-limit from the previous command so slow feedback cannot pin the
+    // setpoint near an old gimbal state.
     double max_step = cfg_.max_angle_rate * dt_s;
-    yaw_cmd = clamp(yaw_cmd, state.yaw - max_step, state.yaw + max_step);
-    pitch_cmd = clamp(pitch_cmd, state.pitch - max_step, state.pitch + max_step);
+    yaw_cmd = clamp(yaw_cmd, rate_base_yaw - max_step, rate_base_yaw + max_step);
+    pitch_cmd = clamp(pitch_cmd, rate_base_pitch - max_step, rate_base_pitch + max_step);
 
     cmd.pitch = static_cast<float>(pitch_cmd);
     cmd.yaw = static_cast<float>(yaw_cmd);

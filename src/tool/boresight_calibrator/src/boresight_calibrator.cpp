@@ -189,6 +189,7 @@ int main(int argc, char** argv) {
         }
         int64_t ts = common::nowMs();
         std::vector<detector::Detection> dets = detector->detect(frame.bgr, ts);
+        has_target = false;
         if (!dets.empty() && dets.front().valid) {
             target_center = dets.front().center;
             has_target = true;

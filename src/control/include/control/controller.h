@@ -9,7 +9,10 @@
 namespace control {
 
 struct ControlConfig {
+    std::string tracking_mode = "absolute";  // absolute | incremental
     double kp = 1.0;
+    double visual_servo_gain = 8.0;           // incremental: 1/s
+    double max_command_lead_deg = 15.0;       // incremental: max cmd-state lead
     double deadband_px = 2.0;
     double max_angle_rate = 57.2958;  // deg/s
     double lowpass_alpha = 0.3;
@@ -75,6 +78,8 @@ private:
     cv::Point2f last_uv_{};
     double last_ff_pitch_rate_ = 0.0;
     double last_ff_yaw_rate_ = 0.0;
+    double last_track_pitch_rate_ = 0.0;
+    double last_track_yaw_rate_ = 0.0;
     bool scanning_ = false;
     double scan_phase_ = 0.0;
     double scan_phase_offset_ = 0.0;

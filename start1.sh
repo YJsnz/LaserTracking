@@ -5,4 +5,4 @@ cd /home/geqingyu/Code/LaserTracking-2026-main/src/build_full_auto/control
   --detector-config ../../detector/config/detector.yaml \
   --control-config ../../control/config/control.yaml \
   --port none \
-  --send-hz 400
+  --send-hz 1000

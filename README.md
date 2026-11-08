@@ -1,113 +1,119 @@
 # LaserTracking
 
-<p align="center">
-  <img src="docs/Horizon.png" width="250" alt="Horizon Team">
-</p>
-
-- **[ROBOMASTER 2026 华北理工大学 HORIZON战队 雷达组 反无人机激光追踪系统视觉部分 先行开源](https://bbs.robomaster.com/article/1883301?source=1)**
-- **[电控部分二轴云台控制开源](https://github.com/NCST-Horizon-RM/Horizon_frame_f1)**
-
----
-## 概览
-
+华北理工大学 HORIZON 战队雷达组的视觉激光追踪项目，面向 RoboMaster 2026 反无人机激光追踪系统。项目将工业相机、目标检测、云台控制和串口通信拆分为可独立维护的 C++ 模块。
 
 <p align="center">
-  <img src="docs/LaserTracking-Pipeline.png"
-       alt="LaserTracking"
-       height="">
+  <img src="docs/Horizon.png" width="220" alt="HORIZON 战队">
 </p>
-<p align="center"><em>LaserTracking Pipeline Overview</em></p>
 
+- 项目介绍：[RoboMaster 论坛开源帖](https://bbs.robomaster.com/article/1883301?source=1)
+- 两轴云台电控参考：[Horizon_frame_f1](https://github.com/NCST-Horizon-RM/Horizon_frame_f1)
 
-* ***common***：统一数据结构与配置读取接口（***TargetMeasurement*** / ***GimbalState*** / ***GimbalCommand*** / ***CameraModel*** / ***Boresight***）。
-* ***hik_camera***：海康 MVS 相机驱动，支持 CPU/GPU 去马赛克与零拷贝。专为高性能推理引擎设计
-* ***detector***：目标检测（传统视觉或 TRT），输出 ***TargetMeasurement***。（*后续根据比赛需要替换检测模型,现为测试 Demo*）
-* ***control***：**控制核心** 像素误差 → 云台角度指令，包含丢失目标搜索策略。
-* ***gimbal_serial***：串口收发云台状态与指令。
-* ***tool/boresight_calibrator***：同轴校准工具（生成 ***u_L/v_L***）。
-* ***tool/parallax_estimator***：视差距离估算工具。
-
----
-## Demo实际效果
+## 项目效果
 
 <p align="center">
-  <img src="docs/demo.gif" width="" alt="Demo">
-  <br>
-  <em>Demo : Search & Tracking</em>
+  <img src="docs/demo.gif" width="720" alt="目标搜索与追踪演示">
+  <br><em>目标搜索与追踪演示</em>
 </p>
 
-**注：实际测试认为使用高帧率工业相机最佳，CS200虽分辨率高但帧率过低导致新数据刷新速度不够快，具体表现为追踪有明显延迟**
+该代码库用于原型验证和系统集成。实际参赛方案已在此基础上继续改进，检测模型、镜头、相机帧率和控制参数都需要按现场设备重新调试。
 
----
-## 2026年超级对抗赛北部赛区实际效果
+## 系统架构
 
 <p align="center">
-  <img src="docs/plane.jpg" width="" alt="plane">
+  <img src="docs/LaserTracking-Pipeline.png" width="900" alt="LaserTracking 系统流程">
 </p>
 
-**注：实际上场方案是该方案改良版，学妹进行了有效优化并更换了新相机**
+| 模块 | 作用 |
+| --- | --- |
+| `common` | 共享测量、云台状态、控制指令、相机模型和配置读取接口 |
+| `hik_camera` | 海康 MVS 工业相机驱动，输出图像帧；支持 CPU 和可选 CUDA/NPP 图像处理 |
+| `detector` | 传统视觉或 TensorRT 检测后端，输出统一的目标测量结果 |
+| `control` | 将图像误差转换为云台角度指令；支持目标丢失后的搜索轨迹 |
+| `gimbal_serial` | 云台串口协议的收发与状态解析 |
+| `tool/boresight_calibrator` | 标定相机与激光的图像坐标偏置 `u_L/v_L` |
+| `tool/parallax_estimator` | 估算不同目标距离下的相机与激光视差 |
+| `yolo` | YOLO 数据处理、训练和模型导出脚本及训练记录 |
 
----
+## 目录结构
 
-## 工程结构
-
-```
-LaserTracking/
-├── README.md
-├── docs
-└── src/
-    ├── CMakeLists.txt            # 顶层构建入口
-    ├── common/                   # 共享类型与配置读取
-    ├── control/                  # 控制器与系统串联 demo
-    ├── detector/                 # 传统视觉/ TRT 检测
-    ├── gimbal_serial/            # 云台串口收发
-    ├── hik_camera/               # 海康相机驱动
-    ├── tool/
-    │   ├── parallax_estimator/   # 视差估算工具
-    │   └── boresight_calibrator/ # 同轴校准工具
-    └── log/                      # 运行日志
+```text
+.
+├── docs/                         # 图片、演示与硬件资料
+├── src/
+│   ├── common/                   # 共享类型与配置读取
+│   ├── control/                  # 控制器、配置与系统示例
+│   ├── detector/                 # 传统视觉、TensorRT 和模型说明
+│   ├── gimbal_serial/            # 云台串口通信
+│   ├── hik_camera/               # 海康相机驱动与配置
+│   └── tool/                     # 校准和视差工具
+├── yolo/                         # 训练与数据转换脚本
+├── build.sh                      # 本地构建快捷脚本
+└── calibrator.sh                 # 同轴校准工具启动脚本
 ```
 
-## 依赖与环境
+训练数据集、编译目录、运行日志和本地 TensorRT 引擎不会作为项目源码提交。模型获取说明见 [`src/detector/model/README.md`](src/detector/model/README.md)。
 
-- OS：Ubuntu 22.04（推荐）
-- OpenCV：4.x
-- CUDA / TensorRT：可选（TRT 检测与 GPU Pipeline）
-- 海康 MVS SDK：用于 `hik_camera`（`-DMVS_ROOT=/opt/MVS`）
+## 环境依赖
 
-### 测试设备
+- Ubuntu 22.04（推荐）、C++17 编译器、CMake 3.18 或更新版本
+- OpenCV 4
+- 海康 MVS SDK：完整相机与系统串联构建需要；默认安装位置为 `/opt/MVS`
+- CUDA Toolkit 与 TensorRT：启用 TensorRT 检测后端时需要
+- CUDA/NPP：相机 GPU 图像处理的可选依赖
 
-- Computer: Lenovo Legion Y9000P IAH7H
-- CPU: 12th Gen Intel Core i9-12900H
-- GPU: NVIDIA GA106M (GeForce RTX 3060 Mobile / Max-Q)
-- OS: Ubuntu 22.04.5 LTS
-- CUDA: 13.0 (nvcc 13.0.48, Driver 580.95.05, CUDA runtime 13.0)
-- TensorRT: 10.14.1 (system packages, libnvinfer/libnvinfer_plugin)
-- OpenCV: 4.5.4 (system), 4.12.0 (conda/python)
-
+TensorRT 引擎与 GPU 型号、CUDA 和 TensorRT 版本相关。若本机没有匹配的引擎，请使用发布的 ONNX 模型重新生成引擎。检测模型不随 Git 仓库提供。
 
 ## 构建
 
+### 完整构建
+
+安装 OpenCV、海康 MVS SDK、CUDA 和 TensorRT 后，在项目根目录执行：
+
 ```bash
-cd /home/XXX/LaserTracking/src
-mkdir -p build
-cd build
-cmake ..
-make -j$(nproc)
+cmake -S src -B src/build_full_auto \
+  -DMVS_ROOT=/opt/MVS \
+  -DDETECTOR_WITH_TRT=ON
+cmake --build src/build_full_auto -j"$(nproc)"
 ```
 
-构建后可执行文件位于各子目录：
-
-- `src/build/control/control_system_demo`
-- `src/build/detector/detector_demo`
-- `src/build/hik_camera/hik_camera_demo`
-- `src/build/gimbal_serial/gimbal_serial_demo`
-- `src/build/tool/boresight_calibrator/boresight_calibrator`
-
-## 运行系统（控制串联）
+若 CUDA 或 TensorRT 不在系统默认路径，可按需传入安装位置：
 
 ```bash
-cd /home/XXX/LaserTracking/src/build/control
+-DTRT_INCLUDE_DIR=/path/to/TensorRT/include \
+-DTRT_LIB_DIR=/path/to/TensorRT/lib
+```
+
+### 使用传统视觉后端
+
+不使用 TensorRT 时，关闭 TensorRT 和相机 CUDA/NPP 支持：
+
+```bash
+cmake -S src -B src/build_cpu \
+  -DMVS_ROOT=/opt/MVS \
+  -DDETECTOR_WITH_TRT=OFF \
+  -DHIK_CAMERA_ENABLE_CUDA=OFF \
+  -DHIK_CAMERA_ENABLE_NPP=OFF
+cmake --build src/build_cpu -j"$(nproc)"
+```
+
+同时将 `src/detector/config/detector.yaml` 中的 `backend` 改为 `classical`。完整系统仍使用海康相机，因此需要安装 MVS SDK。
+
+构建后的主要程序位于：
+
+- `src/build_full_auto/control/control_system_demo`
+- `src/build_full_auto/detector/detector_demo`
+- `src/build_full_auto/detector/detector_hik_demo`
+- `src/build_full_auto/gimbal_serial/gimbal_serial_demo`
+- `src/build_full_auto/tool/boresight_calibrator/boresight_calibrator`
+- `src/build_full_auto/tool/parallax_estimator/parallax_demo`
+
+## 运行系统
+
+先按实际设备修改相机、检测、控制和串口配置，然后启动控制串联程序：
+
+```bash
+cd src/build_full_auto/control
 ./control_system_demo \
   --camera-config ../../hik_camera/config/config.yaml \
   --detector-config ../../detector/config/detector.yaml \
@@ -117,241 +123,50 @@ cd /home/XXX/LaserTracking/src/build/control
   --send-hz 400
 ```
 
-## 日志
+串口名、波特率和发送频率应与电控端设置一致。确认云台方向符号和机械限位后再进行闭环测试；角度约定和串口帧字段见 [`src/control/README.md`](src/control/README.md) 与 [`src/gimbal_serial/README.md`](src/gimbal_serial/README.md)。
 
-`control_system_demo` 会自动将终端输出追加写入：
+控制程序运行日志写入 `src/log/log.txt`，此目录已被 Git 忽略。
 
-```
-src/log/log.txt
-```
+## 配置与校准
 
-每次启动会在日志中追加空行与时间戳。
+| 配置文件 | 说明 |
+| --- | --- |
+| `src/hik_camera/config/config.yaml` | 相机采集、曝光、ROI、去畸变及缓冲参数 |
+| `src/detector/config/detector.yaml` | 检测后端选择 |
+| `src/detector/classical/config/classical.yaml` | 传统视觉检测与跟踪参数 |
+| `src/detector/trt_engine/config/trt.yaml` | TensorRT 引擎路径和后处理参数 |
+| `src/control/config/control.yaml` | 控制增益、搜索策略、相机内参与 boresight 坐标 |
+| `src/control/config/control_fast_follow.yaml` | 增量式快速跟随参数示例 |
 
-## 同轴校准（boresight）
+推荐的调试顺序：先使用静止目标确认 `yaw_sign`、`pitch_sign` 和串口通信，再调整控制增益。相机与激光的相对位置会导致视差随距离变化，建议在常用工作距离校准。
 
-### 使用工具
+校准工具启动方式：
 
 ```bash
-cd /home/XXX/LaserTracking/src/build/tool/boresight_calibrator
-./boresight_calibrator \
-  --camera-config ../../hik_camera/config/config.yaml \
-  --detector-config ../../detector/config/detector.yaml \
-  --boresight-config ../../control/config/control.yaml \
-  --boresight-out ./boresight.yaml
+./calibrator.sh
 ```
 
-### 校准流程
+该脚本默认查找 `src/build_full_auto` 下的可执行文件。详细操作见 [`src/tool/boresight_calibrator/README.md`](src/tool/boresight_calibrator/README.md)；视差估算见 [`src/tool/parallax_estimator/README.md`](src/tool/parallax_estimator/README.md)。
 
-1) 固定目标，让检测框稳定。  
-2) 调整红色十字到激光点位置。  
-3) 保存 `u_L/v_L` 并写回 `control.yaml`。
+## 硬件参考
 
-注意：`u_L/v_L` 对距离敏感，建议在常用工作距离进行校准。
+- 工业相机：Hikrobot MV-CS200-10UMUC，USB 3.0
+- 镜头：MVL-KF3528M-12MP，35 mm
+- 云台：两轴 Pan-Tilt；GM6020 和 STM32F103C8T6 为参考器件
+- 主机：x86_64 Linux；NVIDIA GPU 用于可选 CUDA/TensorRT 加速
+- 接口：相机 USB 3.0，云台 UART
 
-## 关键配置
+当前演示使用的相机帧率偏低时可能出现明显跟踪延迟；实测时优先选择满足视场和帧率要求的相机。实际应用请使用 RoboMaster 组委会认可的激光发射器。硬件图片和演示素材见 [`docs/`](docs/) 与相机资料目录。
 
-- `src/control/config/control.yaml`：控制参数与 `u_L/v_L`。
-- `src/detector/config/detector.yaml`：检测后端选择与参数。
-- `src/hik_camera/config/config.yaml`：相机参数与去马赛克设置。
+## 相关模块文档
 
-## 常见问题
+- [相机驱动](src/hik_camera/README.md)
+- [目标检测](src/detector/README.md)
+- [云台控制](src/control/README.md)
+- [串口协议](src/gimbal_serial/README.md)
+- [工具说明](src/tool/README.md)
+- [模型与发布资源](src/detector/model/README.md)
 
-- **可执行文件找不到**：顶层构建后位于 `src/build/<module>/` 子目录。
-- **串口打不开**：确认设备名与权限（如 `/dev/ttyACM0`）。
-- **没有检测目标**：检查 detector 配置、光照、目标颜色与相机曝光。
+## 许可
 
-
----
-
-## 硬件清单
-
-以下为激光追踪系统参考实现所使用的硬件配置。
-
-<div align="center" style="display:flex; justify-content:center; align-items:center; gap:0;">
-  <img src="docs/LaserTracking.jpg" height="300" alt="laser_tracking" style="display:block; margin:0; padding:0;">
-  <img src="docs/overview.png" height="300" alt="Hardware Overview" style="display:block; margin:0; padding:0;">
-</div>
-<div align="center">
-  <em>Hardware overview</em>
-</div>
-
----
-
-### 工业相机与激光发射器
-
-- **工业相机：** 海康威视 **MV-CS200-10UMUC**（USB3.0）
->[!TIP]
-> **实际测试认为使用高帧率工业相机最佳**
->
->**CS200虽分辨率高但帧率过低导致新数据刷新速度不够快，具体表现为追踪有明显延迟**
->
->**请使用*RM*组委会官方推荐激光发射器，文档中所使用激光只用于*Demo***
-
-- **镜头：** **MVL-KF3528M-12MP**（35 mm，1200 万像素）
-
-* ~~**激光模块：** 工业级可见光激光器~~
-
-  * ~~**波长范围：** 635 / 637 / 650 / 660 / 685 nm（可调）~~
-  * ~~**光型：** 圆点 / 一字线 / 十字线（按型号选择）~~
-
-
-    
-
-<p align="center">
-  <img src="docs/CS200.png" width="500" alt="Hikvision MV-CS200-10UMUC">
-  <br>
-  <em>Hikvision MV-CS200-10UMUC (USB3.0)</em>
-</p>
-
-<p align="center">
-  <img src="docs/MVL-KF3528M-12MP.png" width="500" alt="MVL-KF3528M-12MP Lens">
-  <br>
-  <em>MVL-KF3528M-12MP (35mm, 12MP)</em>
-</p>
-
-<p align="center">
-  <img src="docs/Laser.png" width="500" alt="Laser Module">
-  <br>
-  <em>Visible laser module (reference model)</em>
-</p>
-
----
-
-### 控制与执行
-
-- **云台：** 两轴云台（Pan-Tilt）
-- **电机：** **GM6020**（示例型号）
-- **微控制器（MCU）：** **STM32F103C8T6**（用于底层控制与串口通信）
-
->[!TIP]
->推荐使用更高精度编码器
-
-<table align="center">
-  <tr>
-    <td align="center" valign="middle">
-      <img src="docs/GM6020.png" height="325" alt="GM6020 Motor"><br>
-      <em>GM6020 motor (example)</em>
-    </td>
-    <td align="center" valign="middle">
-      <img src="docs/STM32F103C8T6.jpg" height="325" alt="STM32F103C8T6"><br>
-      <em>STM32F103C8T6 MCU</em>
-    </td>
-  </tr>
-</table>
-
-
-
-
----
-
-### 运算平台
-
-- **主机平台：** x86_64 架构 Linux 主机
-- **GPU：** NVIDIA RTX 系列显卡（可选，用于 CUDA / TensorRT 加速）
-- **接口：** USB 3.0（相机），UART（云台控制）
-
----
-
-### 通信接口
-
-- **相机接口：** USB 3.0
-- **云台通信：** 串口（UART）
-
----
-
-### 供电
-
-- **相机供电：** USB 供电
-- **云台与激光供电：** TB48S 电池
-
----
-
-### 说明
-
-- 实际可达到的帧率受 USB 3.0 链路带宽与相机分辨率限制。
-- GPU 加速并非必需，但在高帧率检测与闭环控制中强烈推荐使用。
-- 激光模块为**参考型号**，可根据功率、波长及光型需求替换为等效产品。推荐使用RM组委会推荐激光发射器
-
-
----
-## 线程模型参考
-
-<p align="center">
-  <img src="docs/Thread-Model.png"
-       alt="Thread Model"
-       height="">
-</p>
-<p align="center"><em>Thread Model Overview</em></p>
-
-注：提供系统线程模型供分析参考
-
----
-## 后记
-
-**今天是2026年6月2日，学弟学妹刚刚结束北部赛区超级对抗赛，学弟学妹取得了很大进步，做得很好，ta们是最棒的！**
-
-在该方案的基础上学妹对部分功能进行了优化与完善，在比赛中获得了不错的效果，方案将在完善后开源出来。
-
-该方案在同轴校准上存在一定问题，通过理论确实可以推算出在一定距离上限的情况下可以忽略同轴校准，但是赛场距离有限，想要取得一个优秀的效果很难忽略高精度同轴校准；
-
-方案目前置入了相关推算工具可以获得在固定距离下所需偏差大小，但是在赛场上我们需要动态过程，在距离变化的情况下获得偏差(*Can LiDAR assist in accurately measuring distance in real time?*)
-
-学妹通过手眼标定优化了这个问题。
-
----
-
-<p align="center">
-  <img src="docs/boresight-calibration.png" width="" alt="boresight calibration">
-</p>
-
-
----
-
-## 许可证
-
-除非文件头、子目录说明或第三方组件声明另有说明，本仓库中由作者原创的**源代码、配置文件与文档内容**，均按照 **GNU Affero General Public License v3.0 only（AGPL-3.0-only）** 授权发布。
-
-**SPDX-License-Identifier: AGPL-3.0-only**
-
-你可以在 **AGPL-3.0-only** 的条款下使用、复制、修改和再分发本项目。若你**分发本项目的修改版本**，或将修改版本作为**网络服务**向用户提供交互访问，则应按照 AGPL-3.0-only 的要求，提供相应的**完整对应源代码**，并保留原有的**版权声明、许可证声明及修改说明**。
-
-本仓库中引用的**第三方库、SDK、工具链、图片、商标、硬件产品名称及相关资料**，不因本仓库的 AGPL-3.0-only 声明而改变其原有权利归属或许可条件。相关内容应遵循其各自的**许可证、EULA 或权利人声明**。
-
-本项目按**现状**提供，不提供任何明示或默示担保，包括但不限于**适销性、特定用途适用性和非侵权担保**。详细条款请参见仓库根目录下的 `LICENSE` 文件。
-
-
-
----
-
-<p align="center">
-  <img src="docs/we.jpg" width="" alt="we">
-</p>
-
-
-<p align="center">
-  <img src="docs/best.jpg" width="" alt="jpg">
-</p>
-
-
-<p align="center">
-  <img src="docs/radar.jpg" width="" alt="radar">
-</p>
-
-
----
-
-
-<p align="center">
-  <img src="docs/Horizon.png" width="200" alt="Horizon Team">
-</p>
-
-
-
-<div align="center">
-Copyright © 2026 ROBOMASTER · 华北理工大学 HORIZON 战队 · 雷达组 - YAOYUZHUO<br/>
-Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).<br/>
-Use, modification, and redistribution are permitted under the terms of AGPL-3.0.<br/>
-The complete corresponding source must be made available.<br/>
-2026 年 01 月 09 日
-
-</div>
+本项目主要源码依据 [GNU Affero General Public License v3.0](LICENSE) 发布。部分第三方组件或随附资料可能有各自的许可条款，请以其目录中的说明为准。

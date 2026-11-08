@@ -342,6 +342,14 @@ bool HikCamera::buildFrameFromBuffer(Frame* out, const MV_FRAME_OUT& out_frame, 
             cv::Mat undistorted(frame.height, frame.width, CV_8UC3, undistort_buffer_.data());
             cv::remap(undistort_input_, undistorted, undistort_map1_, undistort_map2_, cv::INTER_LINEAR);
             std::memcpy(bgr_dst, undistort_buffer_.data(), bgr_size);
+
+            // The GPU buffer contains the pre-remap image. Force downstream
+            // consumers to use the rectified host image so calibration and
+            // tracking share the same pixel coordinate system.
+            frame.gpu_bgr_ptr = nullptr;
+            frame.gpu_stride_bytes = 0;
+            frame.gpu_stream = nullptr;
+            frame.gpu_valid = false;
         }
     }
 

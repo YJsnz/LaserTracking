@@ -14,7 +14,16 @@ bool loadControlConfig(const std::string& path, ControlConfig* cfg,
         return false;
     }
     if (cfg) {
+        if (!fs["tracking_mode"].empty()) {
+            fs["tracking_mode"] >> cfg->tracking_mode;
+        }
         fs["kp"] >> cfg->kp;
+        if (!fs["visual_servo_gain"].empty()) {
+            fs["visual_servo_gain"] >> cfg->visual_servo_gain;
+        }
+        if (!fs["max_command_lead_deg"].empty()) {
+            fs["max_command_lead_deg"] >> cfg->max_command_lead_deg;
+        }
         fs["deadband_px"] >> cfg->deadband_px;
         fs["max_angle_rate"] >> cfg->max_angle_rate;
         fs["lowpass_alpha"] >> cfg->lowpass_alpha;
